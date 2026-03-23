@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PEA Digital Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --pea-purple: #6c2d91;
+            --pea-purple-light: #8e44ad;
+            --pea-gold: #ffc107;
+            --bg-body: #f0f2f5;
+            --card-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+
+        body { font-family: 'Sarabun', sans-serif; background-color: var(--bg-body); margin: 0; color: #333; }
+
+        /* Navbar / Menu Bar */
+        .navbar {
+            background: #fff;
+            padding: 15px 5%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 4px solid var(--pea-purple);
+        }
+
+        .brand { display: flex; align-items: center; gap: 15px; }
+        
+        /* ปรับขนาด Logo ให้น่ารักและพอดี */
+        .brand img { 
+            height: 60px; /* เพิ่มความสูงเล็กน้อยเพื่อความชัดเจนของมาสคอต */
+            width: auto;
+            border-radius: 10px; /* เพิ่มความโค้งมนเล็กน้อย */
+        }
+        
+        .brand h1 { font-size: 1.2rem; color: var(--pea-purple); margin: 0; font-weight: 600; }
+
+        .controls { display: flex; align-items: center; gap: 15px; }
+
+        .filter-box {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: #f8f4ff;
+            padding: 8px 20px;
+            border-radius: 50px;
+            border: 1px solid #ddd;
+        }
+
+        .filter-box label { font-weight: 600; color: var(--pea-purple); font-size: 0.9rem; }
+        
+        select {
+            border: none;
+            background: transparent;
+            font-family: 'Sarabun';
+            font-size: 0.9rem;
+            color: #555;
+            outline: none;
+            min-width: 200px;
+            cursor: pointer;
+        }
+
+        /* Print Button Style */
+        .btn-print {
+            background-color: var(--pea-purple);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-family: 'Sarabun';
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-print:hover { background-color: var(--pea-purple-light); box-shadow: 0 4px 12px rgba(108, 45, 145, 0.3); }
+
+        .container { max-width: 1300px; margin: 30px auto; padding: 0 20px; }
+
+        .card {
+            background: #fff;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: var(--card-shadow);
+            page-break-inside: avoid;
+        }
+
+        .card-header {
+            border-left: 6px solid var(--pea-gold);
+            padding-left: 15px;
+            margin-bottom: 25px;
+        }
+
+        .card-header h2 { margin: 0; font-size: 1.1rem; color: var(--pea-purple); }
+
+        .chart-container { position: relative; height: 450px; width: 100%; }
+
+        .table-wrapper { overflow-x: auto; border-radius: 15px; border: 1px solid #eee; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { background: #fdfbff; color: var(--pea-purple); padding: 15px; text-align: left; border-bottom: 2px solid #eee; white-space: nowrap; }
+        td { padding: 12px 15px; border-bottom: 1px solid #f5f5f5; }
+        tr:hover td { background: #fdf9ff; color: var(--pea-purple-light); }
+
+        /* Loader */
+        #loader { position: fixed; inset: 0; background: white; display: flex; justify-content: center; align-items: center; z-index: 9999; flex-direction: column; }
+        .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--pea-purple); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* CSS สำหรับการพิมพ์ PDF */
+        @media print {
+            body { background-color: white; }
+            .navbar, .btn-print, .filter-box { display: none !important; }
+            .container { width: 100%; max-width: none; margin: 0; padding: 0; }
+            .card { box-shadow: none; border: 1px solid #eee; margin-bottom: 20px; }
+            .chart-container { height: 400px !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="loader">
+    <div class="spinner"></div>
+    <p style="margin-top: 15px; color: var(--pea-purple); font-weight: 600;">กำลังโหลดข้อมูล PEA Dashboard...</p>
+</div>
+
+<div class="navbar">
+    <div class="brand">
+        <img src="https://i.ibb.co/XzY8VfC/PEA-Squirrel-Logo.png" alt="PEA Cute Mascot Logo">
+        <h1>ระบบรายงานข้อมูลสถิติรายพื้นที่</h1>
+    </div>
+    <div class="controls">
+        <div class="filter-box">
+            <label for="areaFilter">เลือกการไฟฟ้าในพื้นที่ :</label>
+            <select id="areaFilter" onchange="applyFilter()">
+                <option value="ALL">-- แสดงทั้งหมด --</option>
+            </select>
+        </div>
+        <button class="btn-print" onclick="window.print()">
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+            พิมพ์เป็น PDF
+        </button>
+    </div>
+</div>
+
+<div class="container">
+    <div class="card">
+        <div class="card-header">
+            <h2>สัดส่วนข้อมูลตามสถานะ</h2>
+        </div>
+        <div class="chart-container">
+            <canvas id="statusBarChart"></canvas>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2>รายละเอียดรายการข้อมูล</h2>
+        </div>
+        <div class="table-wrapper">
+            <table>
+                <thead><tr id="tableHead"></tr></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const SHEET_ID = '15SClvSIvKz9o06xrxUkeenAAXSvjn4SRo9Dyx8GCRY0';
+    const URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tq=SELECT%20*`;
+    
+    const TARGET_COLS = [0, 1, 2, 7, 8, 9, 12, 14];
+    const FILTER_COL_INDEX = 14; 
+
+    let rawData = [];
+    let headers = [];
+    let barChart = null;
+
+    async function init() {
+        try {
+            const res = await fetch(URL);
+            const text = await res.text();
+            const json = JSON.parse(text.substring(47).slice(0, -2));
+            
+            headers = json.table.cols;
+            rawData = json.table.rows;
+
+            populateDropdown();
+            renderHeaders();
+            applyFilter(); 
+
+            document.getElementById('loader').style.display = 'none';
